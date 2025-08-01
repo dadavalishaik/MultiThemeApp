@@ -12,6 +12,8 @@ const ThemeContext = createContext<ThemeContextProps | undefined>(undefined);
 
 export const ThemeProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [theme, setThemeState] = useState<Theme>("theme1");
+  const [pendingTheme, setPendingTheme] = useState<Theme | null>(null);
+  const [currentKey, setCurrentKey] = useState<number>(0);
 
   useEffect(() => {
     const stored = localStorage.getItem("selectedTheme") as Theme;
@@ -19,11 +21,19 @@ export const ThemeProvider: React.FC<{ children: React.ReactNode }> = ({ childre
   }, []);
 
   const setTheme = (newTheme: Theme) => {
-    setThemeState(newTheme);
-    localStorage.setItem("selectedTheme", newTheme);
+    if (newTheme === theme) return;
+    setPendingTheme(newTheme);
+    setCurrentKey((prev) => prev + 1); // triggers AnimatePresence exit
   };
 
-  // Theme-based motion variants
+  const handleExitComplete = () => {
+    if (pendingTheme) {
+      setThemeState(pendingTheme);
+      localStorage.setItem("selectedTheme", pendingTheme);
+      setPendingTheme(null);
+    }
+  };
+
   const getMotionVariants = () => {
     switch (theme) {
       case "theme2":
@@ -49,9 +59,9 @@ export const ThemeProvider: React.FC<{ children: React.ReactNode }> = ({ childre
 
   return (
     <ThemeContext.Provider value={{ theme, setTheme }}>
-      <AnimatePresence mode="wait">
+      <AnimatePresence mode="wait" onExitComplete={handleExitComplete}>
         <motion.div
-          key={theme}
+          key={currentKey}
           initial={getMotionVariants().initial}
           animate={getMotionVariants().animate}
           exit={getMotionVariants().exit}
@@ -73,7 +83,6 @@ export const useTheme = (): ThemeContextProps => {
   }
   return context;
 };
-
 
 
 
